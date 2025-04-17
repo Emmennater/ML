@@ -1,12 +1,12 @@
 # Machine Learning
 This is a repository for some of the Machine Learning projects I have worked on.
 
-<div style="display: flex;">
-  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-    <img src="Coursework/Clustering/clustered.jpg" style="width: 600px; display: block;"/>
-    <img src="Coursework/SVC/Figure_1.png" style="width: 600px; display: block;"/>
-  </div>
-</div>
+<table>
+  <tr>
+    <td><img src="Coursework/Clustering/clustered.jpg" width="100%"/></td>
+    <td><img src="Coursework/SVC/Figure_1.png" width="100%"/></td>
+  </tr>
+</table>
 
 ## My Beloved, the Iris Dataset
 ```python
