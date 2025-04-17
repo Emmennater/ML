@@ -2,9 +2,9 @@
 This is a repository for some of the Machine Learning projects I have worked on.
 
 <div style="display: flex;">
-  <div style="display: grid; max-width:80%; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-    <img src="Coursework/Clustering/clustered.jpg" style="width: 100%; display: block;"/>
-    <img src="Coursework/SVC/Figure_1.png" style="width: 100%; display: block;"/>
+  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+    <img src="Coursework/Clustering/clustered.jpg" style="width: 600px; display: block;"/>
+    <img src="Coursework/SVC/Figure_1.png" style="width: 600px; display: block;"/>
   </div>
 </div>
 
