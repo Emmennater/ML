@@ -8,11 +8,13 @@ Generates images from an input noise vector. Tries to generate images that look 
 ## Results
 Most are not great, but we've seen a lot of improvement with the later models. Check out some of these images we were able to generate!
 
-<div style="display: flex;">
-  <div style="display: grid;grid-template-columns: repeat(2, 1fr); gap: 10px;">
-    <img src="face0.png" style="width: 300px; display: block;"/>
-    <img src="face1.png" style="width: 300px; display: block;"/>
-    <img src="face2.png" style="width: 300px; display: block;"/>
-    <img src="face3.png" style="width: 300px; display: block;"/>
-  </div>
-</div>
+<table>
+  <tr>
+    <td><img src="face0.png" width="100%"/></td>
+    <td><img src="face1.png" width="100%"/></td>
+  </tr>
+  <tr>
+    <td><img src="face2.png" width="100%"/></td>
+    <td><img src="face3.png" width="100%"/></td>
+  </tr>
+</table>
