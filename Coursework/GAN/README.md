@@ -1,6 +1,7 @@
 # GAN Image Generator
 GAN stands for Generative Aversarial Network.
 This technique for image generation uses two types of networks to train; a discriminator and a generator.
+- Made in collaboration with [Kyler Nikolai](https://www.linkedin.com/in/kylernikolai/).
 ## Discriminator
 Determines if an input image is from the original dataset. Output is a probability from 0 to 1, where 0 is if it isn't in the dataset and 1 if it is.
 ## Generator
