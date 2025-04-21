@@ -269,51 +269,51 @@ class Generator(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-class Generator(nn.Module):
-    def __init__(self):
-        super(Generator, self).__init__()
-
-        ninputs = 100
-        self.model = nn.Sequential(
-            # Start with a 100-dim noise vector, project and reshape to (256, 6, 6)
-            nn.Linear(ninputs, 1024 * 13 * 11),
-            nn.ReLU(True),
-            #nn.BatchNorm1d(256 * 6 * 6),
-
-            # Reshape to 256 x 13 x 11
-            nn.Unflatten(1, (1024, 13, 11)),
-
-            # Upsample to (128, 27, 22)
-            nn.ConvTranspose2d(1024, 512, kernel_size=(5,4), stride=2, padding=1),  # *2
-            # nn.Upsample(scale_factor=2, mode='bilinear'),
-            # nn.Conv2d(256, 128, kernel_size=(4,3), stride=1, padding=(2,1)),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.BatchNorm2d(512),
-
-            # Upsample to (64, 54, 44)
-            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),  # *2
-            # nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
-            # nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),  # *2
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.BatchNorm2d(256),
-
-            # Upsample to (32, 109, 89)
-            # nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=1),
-            nn.Upsample(scale_factor=2, mode='bilinear'),
-            nn.Conv2d(256, 128, kernel_size=4, stride=1, padding=2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.BatchNorm2d(128),
-
-            # Final upsample to (3, 218, 178)
-            nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
-            nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),  # *2
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1),
-            nn.Sigmoid()  # Output in range [0, 1]
-        )
-
-    def forward(self, x):
-        return self.model(x)
+# class Generator(nn.Module):
+#     def __init__(self):
+#         super(Generator, self).__init__()
+#
+#         ninputs = 100
+#         self.model = nn.Sequential(
+#             # Start with a 100-dim noise vector, project and reshape to (256, 6, 6)
+#             nn.Linear(ninputs, 1024 * 13 * 11),
+#             nn.ReLU(True),
+#             #nn.BatchNorm1d(256 * 6 * 6),
+#
+#             # Reshape to 256 x 13 x 11
+#             nn.Unflatten(1, (1024, 13, 11)),
+#
+#             # Upsample to (128, 27, 22)
+#             nn.ConvTranspose2d(1024, 512, kernel_size=(5,4), stride=2, padding=1),  # *2
+#             # nn.Upsample(scale_factor=2, mode='bilinear'),
+#             # nn.Conv2d(256, 128, kernel_size=(4,3), stride=1, padding=(2,1)),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.BatchNorm2d(512),
+#
+#             # Upsample to (64, 54, 44)
+#             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),  # *2
+#             # nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
+#             # nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),  # *2
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.BatchNorm2d(256),
+#
+#             # Upsample to (32, 109, 89)
+#             # nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=1),
+#             nn.Upsample(scale_factor=2, mode='bilinear'),
+#             nn.Conv2d(256, 128, kernel_size=4, stride=1, padding=2),
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.BatchNorm2d(128),
+#
+#             # Final upsample to (3, 218, 178)
+#             nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
+#             nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),  # *2
+#             nn.LeakyReLU(0.2, inplace=True),
+#             nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1),
+#             nn.Sigmoid()  # Output in range [0, 1]
+#         )
+#
+#     def forward(self, x):
+#         return self.model(x)
 
 # class Generator(nn.Module):
 #     def __init__(self):
