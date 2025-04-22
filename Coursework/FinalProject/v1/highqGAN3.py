@@ -50,7 +50,7 @@ class Discriminator(nn.Module):
 
         self.fc = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(43008, 1)
+            nn.Linear(43008, 1)#remove fully conected
         )
 
     def forward(self, x):
@@ -543,7 +543,7 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=500, save_dir='', devi
     gen = Generator().to(device)
     def init_weights(m):
         if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-            nn.init.normal_(m.weight, mean=1.0, std=0.2)
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
     gen.apply(init_weights)
     dis = Discriminator().to(device)
     criterion = nn.BCEWithLogitsLoss()
@@ -616,7 +616,7 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(100000, 128, save_time=1, save_dir='new36.pth')
+    trainNN(100000, 128, save_time=1, save_dir='new38.pth')
 
 # print("CUDA Available:", torch.cuda.is_available())
 # trainNN(30, 16, save_time=10, save_dir='checkpoint12.pth')
