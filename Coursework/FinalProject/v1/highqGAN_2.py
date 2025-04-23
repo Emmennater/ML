@@ -616,7 +616,7 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(100000, 128, save_time=1, save_dir='new38.pth')
+    trainNN(0, 128, save_time=1, save_dir='new38.pth')
 
 # print("CUDA Available:", torch.cuda.is_available())
 # trainNN(30, 16, save_time=10, save_dir='checkpoint12.pth')
