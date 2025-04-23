@@ -14,7 +14,7 @@ img_dir = "./data.npy"
 
 class FaceDataset(Dataset):
     def __init__(self, npy_file):
-        self.data = np.load(npy_file, mmap_mode='r')  #, mmap_mode='r' stays on disk, only loads slices
+        self.data = np.load(npy_file)  #, mmap_mode='r' stays on disk, only loads slices
 
     def __len__(self):
         return len(self.data)
@@ -28,27 +28,39 @@ class FaceDataset(Dataset):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
-
-        self.conv_layers = nn.Sequential(
+        self.noise_std = 0.1
+        self.conv_layer1 = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=7, stride=2, padding=3),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=False),
+        )
+        self.conv_layer2 = nn.Sequential(
             nn.Conv2d(32, 64, kernel_size=5, stride=2, padding=2),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=False),
+        )
+        self.conv_layer3 = nn.Sequential(
             nn.Conv2d(64, 128, kernel_size=5, stride=2, padding=2),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=False),
+        )
+        self.conv_layer4 = nn.Sequential(
             nn.Conv2d(128, 256, kernel_size=5, stride=2, padding=2),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.LeakyReLU(0.2, inplace=False),
             nn.Dropout2d(0.3)
         )
 
 
         self.fc = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(43008, 1)
+            nn.Linear(43008, 1)#remove fully conected
         )
 
     def forward(self, x):
-        x = self.conv_layers(x)
+        x = self.conv_layer1(x)
+        if self.training: x += torch.randn_like(x) * self.noise_std
+        x = self.conv_layer2(x)
+        if self.training: x += torch.randn_like(x) * self.noise_std
+        x = self.conv_layer3(x)
+        if self.training: x += torch.randn_like(x) * self.noise_std
+        x = self.conv_layer4(x)
         return self.fc(x)
 
 
@@ -269,51 +281,63 @@ class Generator(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# class Generator(nn.Module):
-#     def __init__(self):
-#         super(Generator, self).__init__()
-#
-#         ninputs = 100
-#         self.model = nn.Sequential(
-#             # Start with a 100-dim noise vector, project and reshape to (256, 6, 6)
-#             nn.Linear(ninputs, 1024 * 13 * 11),
-#             nn.ReLU(True),
-#             #nn.BatchNorm1d(256 * 6 * 6),
-#
-#             # Reshape to 256 x 13 x 11
-#             nn.Unflatten(1, (1024, 13, 11)),
-#
-#             # Upsample to (128, 27, 22)
-#             nn.ConvTranspose2d(1024, 512, kernel_size=(5,4), stride=2, padding=1),  # *2
-#             # nn.Upsample(scale_factor=2, mode='bilinear'),
-#             # nn.Conv2d(256, 128, kernel_size=(4,3), stride=1, padding=(2,1)),
-#             nn.LeakyReLU(0.2, inplace=True),
-#             nn.BatchNorm2d(512),
-#
-#             # Upsample to (64, 54, 44)
-#             nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),  # *2
-#             # nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
-#             # nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),  # *2
-#             nn.LeakyReLU(0.2, inplace=True),
-#             nn.BatchNorm2d(256),
-#
-#             # Upsample to (32, 109, 89)
-#             # nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=1),
-#             nn.Upsample(scale_factor=2, mode='bilinear'),
-#             nn.Conv2d(256, 128, kernel_size=4, stride=1, padding=2),
-#             nn.LeakyReLU(0.2, inplace=True),
-#             nn.BatchNorm2d(128),
-#
-#             # Final upsample to (3, 218, 178)
-#             nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
-#             nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1),  # *2
-#             nn.LeakyReLU(0.2, inplace=True),
-#             nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1),
-#             nn.Sigmoid()  # Output in range [0, 1]
-#         )
-#
-#     def forward(self, x):
-#         return self.model(x)
+class Generator(nn.Module):
+    def __init__(self):
+        super(Generator, self).__init__()
+
+        ninputs = 100
+        self.model = nn.Sequential(
+            # Start with a 100-dim noise vector, project and reshape to (256, 6, 6)
+            nn.Linear(ninputs, 256 * 13 * 11),
+            nn.ReLU(True),
+            #nn.BatchNorm1d(256 * 6 * 6),
+
+            # Reshape to 256 x 13 x 11
+            nn.Unflatten(1, (256, 13, 11)),
+
+            # Upsample to (128, 27, 22)
+            nn.ConvTranspose2d(256, 128, kernel_size=(5,4), stride=2, padding=1, bias=False),  # *2
+            # nn.Upsample(scale_factor=2, mode='bilinear'),
+            # nn.Conv2d(256, 128, kernel_size=(4,3), stride=1, padding=(2,1)),
+            nn.ReLU(True),
+            nn.BatchNorm2d(128),
+
+            # Upsample to (64, 54, 44)
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),  # *2
+            # nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
+            # nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),  # *2
+            nn.ReLU(True),
+            nn.BatchNorm2d(64),
+        )
+            # Upsample to (32, 109, 89)
+            # nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=1),
+        self.up = nn.Upsample(scale_factor=2, mode='bilinear')
+
+
+        self.model2 = nn.Sequential(
+            nn.Conv2d(64, 32, kernel_size=4, stride=1, padding=2, bias=False),
+            nn.ReLU(True),
+            nn.BatchNorm2d(32),
+        )
+            # Final upsample to (3, 218, 178)
+            # nn.Upsample(scale_factor=2, mode='bilinear'),  # or 'bilinear'
+        self.model3 = nn.Sequential(
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1, bias=False),  # *2
+            nn.ReLU(True),
+            nn.BatchNorm2d(32),
+            nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Sigmoid()  # Output in range [0, 1]
+        )
+
+
+    def forward(self, x):
+        x = self.model(x)
+        #x = self.up(x)
+        x = TF.resize(x, (108, 88))
+        x = self.model2(x)
+        #x = self.up(x)
+        x = TF.resize(x, (218, 178))
+        return self.model3(x)
 
 # class Generator(nn.Module):
 #     def __init__(self):
@@ -517,9 +541,13 @@ def load_checkpoint(gen, dis, gen_opt, dis_opt, path):
 
 def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=500, save_dir='', device='cuda' if torch.cuda.is_available() else 'cpu'):
     gen = Generator().to(device)
+    def init_weights(m):
+        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
+    gen.apply(init_weights)
     dis = Discriminator().to(device)
     criterion = nn.BCEWithLogitsLoss()
-    dis_opt = torch.optim.Adam(dis.parameters(), lr=lr, betas=(0.5, 0.999))
+    dis_opt = torch.optim.Adam(dis.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-4)
     gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
     noise_dim = 100
 
@@ -530,11 +558,11 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=500, save_dir='', devi
         loader = DataLoader(dataset, batch_size=batch_size // 2, shuffle=True, num_workers=0, pin_memory=True)
 
         for epoch in range(start_epoch, start_epoch + epochs):
-            i = 0
+            #i = 0
             for real in loader:
                 real = real.to(device, non_blocking=True)
-                print(i)
-                i += 1
+                # print(i)
+                # i += 1
                 # === Discriminator ===
                 noise = torch.randn(batch_size // 2, noise_dim, device=device)
                 fake = gen(noise).detach()
@@ -545,8 +573,8 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=500, save_dir='', devi
                 real_preds = dis(real)
                 fake_preds = dis(fake)
 
-                real_labels = torch.ones_like(real_preds).to(device)
-                fake_labels = torch.zeros_like(fake_preds).to(device)
+                real_labels = (torch.ones_like(real_preds)*0.9).to(device)
+                fake_labels = (torch.zeros_like(fake_preds)+0.1).to(device)
 
                 real_loss = criterion(real_preds, real_labels)
                 fake_loss = criterion(fake_preds, fake_labels)
@@ -565,35 +593,16 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=500, save_dir='', devi
                 gen_opt.step()
 
 
-
-
-                # print(f"Epoch {epoch + 1} - D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
-                # with torch.no_grad():
-                #     d_lr = dis_opt.param_groups[0]['lr']
-                #     g_lr = gen_opt.param_groups[0]['lr']
-                #
-                #     if d_loss.item() < g_loss.item():
-                #         # Discriminator is winning, help generator
-                #         g_lr *= 1.05
-                #         d_lr *= 0.95
-                #     else:
-                #         # Generator is winning, help discriminator
-                #         g_lr *= 0.95
-                #         d_lr *= 1.05
-                #
-                #     # Clamp to reasonable bounds
-                #     g_lr = max(min(g_lr, lr * 10), lr * 0.0001)
-                #     d_lr = max(min(d_lr, lr * 10), lr * 0.0001)
-                #
-                #     # Update optimizers
-                #     for param_group in gen_opt.param_groups:
-                #         param_group['lr'] = g_lr
-                #     for param_group in dis_opt.param_groups:
-                #         param_group['lr'] = d_lr
-
-
             if (epoch + 1) % save_time == 0:
                 save_checkpoint(gen, dis, gen_opt, dis_opt, epoch + 1, save_dir)
+                folder_path = save_dir[:-4]
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+                r = torch.randn(2, 100).to(device)
+                im = gen(r*0.5).detach().cpu().numpy()[0]
+                im = np.transpose(im, (1, 2, 0))  # shape: (218, 178, 3)
+                im = (im * 255).clip(0, 255).astype(np.uint8)
+                plt.imsave(f'{folder_path}/epoch{epoch+1}.png', im)
                 print(f"Epoch {epoch+1} - D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
 
     gen.eval()
@@ -607,7 +616,7 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(0, 32, save_time=1, save_dir='old29.pth')
+    trainNN(100000, 128, save_time=1, save_dir='new38.pth')
 
 # print("CUDA Available:", torch.cuda.is_available())
 # trainNN(30, 16, save_time=10, save_dir='checkpoint12.pth')
