@@ -45,45 +45,50 @@ class Discriminator(nn.Module):
             # (64, 64, 64)
             nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
             nn.LeakyReLU(0.2, inplace=False),
+            nn.BatchNorm2d(64),
         )
         self.conv_layer2 = nn.Sequential(
             # (128, 32, 32)
             nn.Conv2d(64, 128, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(0.2, inplace=False),
+            nn.BatchNorm2d(128),
         )
         self.conv_layer3 = nn.Sequential(
             # (256, 16, 16)
             nn.Conv2d(128, 256, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(0.2, inplace=False),
+            nn.BatchNorm2d(256),
         )
         self.conv_layer4 = nn.Sequential(
             # (512, 8, 8)
             nn.Conv2d(256, 512, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(0.2, inplace=False),
+            nn.BatchNorm2d(512),
         )
         self.conv_layer5 = nn.Sequential(
             # (1028, 4, 4)
             nn.Conv2d(512, 1028, kernel_size=5, stride=2, padding=2),
             nn.LeakyReLU(0.2, inplace=False),
+            nn.BatchNorm2d(1028),
             nn.Dropout2d(0.3)
         )
 
 
         self.fc = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(16448, 1)#remove fully conected
+            nn.Conv2d(1028, 1, kernel_size=4, stride=1),
         )
 
     def forward(self, x):
         x = self.conv_layer1(x)
-        if self.training: x += torch.randn_like(x) * self.noise_std
+        #if self.training: x += torch.randn_like(x) * self.noise_std
         x = self.conv_layer2(x)
-        if self.training: x += torch.randn_like(x) * self.noise_std
+        #if self.training: x += torch.randn_like(x) * self.noise_std
         x = self.conv_layer3(x)
-        if self.training: x += torch.randn_like(x) * self.noise_std
+        #if self.training: x += torch.randn_like(x) * self.noise_std
         x = self.conv_layer4(x)
         x = self.conv_layer5(x)
-        return self.fc(x)
+        x = self.fc(x)
+        return x.view(-1, 1)
 
 
 class Generator(nn.Module):
@@ -171,6 +176,7 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', device
             nn.init.normal_(m.weight, mean=0.0, std=0.02)
     gen.apply(init_weights)
     dis = Discriminator().to(device)
+    dis.apply(init_weights)
     criterion = nn.BCEWithLogitsLoss()
     dis_opt = torch.optim.Adam(dis.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-4)
     gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
