@@ -1,0 +1,246 @@
+import os
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import torch
+from torch import nn
+from torch.nn import functional as F
+from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import functional as TF
+import cv2
+
+
+img_dir = "./GoodData.npy"
+
+class FaceDataset(Dataset):
+    def __init__(self, npy_file):
+        self.data = np.load(npy_file)  #, mmap_mode='r' stays on disk, only loads slices
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        img = self.data[idx].astype(np.float32) / 127.5 - 1.0
+        return torch.from_numpy(img)
+
+# class FaceDataset(Dataset):
+#     def __init__(self, npy_file):
+#         self.npy_file = npy_file
+#         self.length = np.load(npy_file, mmap_mode='r').shape[0]
+#
+#     def __len__(self):
+#         return self.length
+#
+#     def __getitem__(self, idx):
+#         data = np.load(self.npy_file, mmap_mode='r')
+#         img = data[idx].astype(np.float32) / 127.5 - 1.0
+#         return torch.from_numpy(img)
+
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.noise_std = 0.1
+        # start at (3, 128, 128)
+        self.conv_layer1 = nn.Sequential(
+            # (64, 64, 64)
+            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3),
+            nn.LeakyReLU(0.2, inplace=False),
+        )
+        self.conv_layer2 = nn.Sequential(
+            # (128, 32, 32)
+            nn.Conv2d(64, 128, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(0.2, inplace=False),
+        )
+        self.conv_layer3 = nn.Sequential(
+            # (256, 16, 16)
+            nn.Conv2d(128, 256, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(0.2, inplace=False),
+        )
+        self.conv_layer4 = nn.Sequential(
+            # (512, 8, 8)
+            nn.Conv2d(256, 512, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(0.2, inplace=False),
+        )
+        self.conv_layer5 = nn.Sequential(
+            # (1028, 4, 4)
+            nn.Conv2d(512, 1028, kernel_size=5, stride=2, padding=2),
+            nn.LeakyReLU(0.2, inplace=False),
+            nn.Dropout2d(0.3)
+        )
+
+
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(16448, 1)#remove fully conected
+        )
+
+    def forward(self, x):
+        x = self.conv_layer1(x)
+        if self.training: x += torch.randn_like(x) * self.noise_std
+        x = self.conv_layer2(x)
+        if self.training: x += torch.randn_like(x) * self.noise_std
+        x = self.conv_layer3(x)
+        if self.training: x += torch.randn_like(x) * self.noise_std
+        x = self.conv_layer4(x)
+        x = self.conv_layer5(x)
+        return self.fc(x)
+
+
+class Generator(nn.Module):
+    def __init__(self):
+        super(Generator, self).__init__()
+
+        ninputs = 100
+        self.model = nn.Sequential(
+            # Start with a 100-dim noise vector, project and reshape to (256, 6, 6)
+            nn.Linear(ninputs, 1028 * 4 * 4),
+            nn.ReLU(True),
+            #nn.BatchNorm1d(256 * 6 * 6),
+
+            # start at (1028, 4, 4)
+            nn.Unflatten(1, (1028, 4, 4)),
+
+            # Upsample to (512, 8, 8)
+            nn.ConvTranspose2d(1028, 512, kernel_size=4, stride=2, padding=1, bias=False),  # *2
+            nn.ReLU(True),
+            nn.BatchNorm2d(512),
+
+            # Upsample to (256, 16, 16)
+            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=False),  # *2
+            nn.ReLU(True),
+            nn.BatchNorm2d(256),
+
+            # Upsample to (128, 32, 32)
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=False),  # *2
+            nn.ReLU(True),
+            nn.BatchNorm2d(128),
+
+            # Upsample to (64, 64, 64)
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=False),  # *2
+            nn.ReLU(True),
+            nn.BatchNorm2d(64),
+
+            # Upsample to (3, 128, 128)
+            nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1, bias=False),  # *2
+
+            nn.Tanh()  # Output in range [-1, 1]
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
+def show(img):
+    # Display image
+    img = (img + 1)*127.5
+    img = img.clip(0, 255).astype(np.uint8)
+    img = np.transpose(img, (1, 2, 0))
+    plt.imshow(img, cmap='grey', vmin=0, vmax=255)
+    plt.show()
+
+
+def save_checkpoint(gen, dis, gen_opt, dis_opt, epoch, path):
+    torch.save({
+        'epoch': epoch,
+        'gen_state_dict': gen.state_dict(),
+        'dis_state_dict': dis.state_dict(),
+        'gen_optimizer': gen_opt.state_dict(),
+        'dis_optimizer': dis_opt.state_dict()
+    }, path)
+
+
+def load_checkpoint(gen, dis, gen_opt, dis_opt, path):
+    if os.path.exists(path):
+        if torch.cuda.is_available():
+            checkpoint = torch.load(path)
+        else:
+            checkpoint = torch.load(path, map_location=torch.device('cpu'))
+        gen.load_state_dict(checkpoint['gen_state_dict'])
+        dis.load_state_dict(checkpoint['dis_state_dict'])
+        gen_opt.load_state_dict(checkpoint['gen_optimizer'])
+        dis_opt.load_state_dict(checkpoint['dis_optimizer'])
+        print(f"Checkpoint loaded from epoch {checkpoint['epoch']}")
+        return checkpoint['epoch']
+    return 0
+
+
+def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', device='cuda' if torch.cuda.is_available() else 'cpu'):
+    gen = Generator().to(device)
+    def init_weights(m):
+        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
+    gen.apply(init_weights)
+    dis = Discriminator().to(device)
+    criterion = nn.BCEWithLogitsLoss()
+    dis_opt = torch.optim.Adam(dis.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-4)
+    gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
+    noise_dim = 100
+
+    start_epoch = load_checkpoint(gen, dis, gen_opt, dis_opt, save_dir)
+
+    if epochs>0:
+        dataset = FaceDataset(img_dir)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
+
+        for epoch in range(start_epoch, start_epoch + epochs):
+            #i = 0
+            for real in loader:
+                real = real.to(device, non_blocking=True)
+                # print(i)
+                # i += 1
+                # === Discriminator ===
+                noise = torch.randn(batch_size, noise_dim, device=device)
+                fake = gen(noise).detach()
+
+                dis_opt.zero_grad()
+                gen_opt.zero_grad()
+
+                real_preds = dis(real)
+                fake_preds = dis(fake)
+
+                real_labels = (torch.ones_like(real_preds)*0.9).to(device)
+                fake_labels = (torch.zeros_like(fake_preds)+0.1).to(device)
+
+                real_loss = criterion(real_preds, real_labels)
+                fake_loss = criterion(fake_preds, fake_labels)
+                d_loss = real_loss + fake_loss
+                d_loss.backward()
+                dis_opt.step()
+
+                # === Generator ===
+                noise = torch.randn(batch_size, noise_dim, device=device)
+                fake = gen(noise)
+
+                fake_preds = dis(fake)
+                gen_labels = torch.ones_like(fake_preds)
+                g_loss = criterion(fake_preds, gen_labels)
+                g_loss.backward()
+                gen_opt.step()
+
+
+            if (epoch + 1) % save_time == 0:
+                save_checkpoint(gen, dis, gen_opt, dis_opt, epoch + 1, save_dir)
+                folder_path = save_dir[:-4]
+                if not os.path.exists(folder_path):
+                    os.makedirs(folder_path)
+                r = torch.randn(2, 100).to(device)
+                im = gen(r*0.5).detach().cpu().numpy()[0]
+                im = np.transpose(im, (1, 2, 0))  # shape: (218, 178, 3)
+                im = ((im + 1)*127.5).clip(0, 255).astype(np.uint8)
+                plt.imsave(f'{folder_path}/epoch{epoch+1}.png', im)
+                print(f"Epoch {epoch+1} - D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
+
+    gen.eval()
+    for i in range(100):
+        r = torch.randn(2, 100).to(device)
+        im = gen(r).detach().cpu().numpy()[0]
+        show(im)
+
+
+
+if __name__ == '__main__':
+    import multiprocessing
+    multiprocessing.freeze_support()  # Optional but recommended on Windows
+
+    print("CUDA Available:", torch.cuda.is_available())
+    trainNN(100000, 128, save_time=1, save_dir='128GAN1.pth')
