@@ -605,18 +605,64 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=500, save_dir='', devi
                 plt.imsave(f'{folder_path}/epoch{epoch+1}.png', im)
                 print(f"Epoch {epoch+1} - D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
 
-    gen.eval()
-    for i in range(100):
-        r = torch.randn(2, 100).to(device)
-        im = gen(r).detach().cpu().numpy()[0] * 255
-        show(im)
+    # gen.eval()
+    # for i in range(100):
+    #     r = torch.randn(2, 100).to(device)
+    #     im = gen(r).detach().cpu().numpy()[0] * 255
+    #     show(im)
+
+    def nothing(x):
+        pass
+    cv2.namedWindow('image')
+    # create trackbars for color change
+    cv2.createTrackbar('im1', 'image', 0, 100, nothing)
+    cv2.createTrackbar('im2', 'image', 0, 100, nothing)
+    cv2.createTrackbar('im3', 'image', 0, 100, nothing)
+    cv2.createTrackbar('im4', 'image', 0, 100, nothing)
+    cv2.createTrackbar('im5', 'image', 0, 100, nothing)
+
+    # create switch for ON/OFF functionality
+    r1 = ((torch.randn(2, 100))).to(device)
+    r2 = ((torch.randn(2, 100))).to(device)
+    r3 = ((torch.randn(2, 100))).to(device)
+    r4 = ((torch.randn(2, 100))).to(device)
+    r5 = ((torch.randn(2, 100))).to(device)
+
+    img = np.zeros((218, 178, 3), np.uint8)
+    # img = (gen(r + r2 + r3).detach().cpu().numpy()[0] * 255)
+    # img = (img * 255).clip(0, 255).astype('uint8')
+    while (True):
+        big_img = cv2.resize(img, (218*2, 178*2), interpolation=cv2.INTER_NEAREST)
+        cv2.imshow('image', big_img)
+        #cv2.imshow('image', img)
+        k = cv2.waitKey(1) & 0xFF
+        if k == 27: # Escape
+            break
+
+        # get current positions of four trackbars
+        k = cv2.getTrackbarPos('im1', 'image')/100
+        g = cv2.getTrackbarPos('im2', 'image')/100
+        b = cv2.getTrackbarPos('im3', 'image')/100
+        a = cv2.getTrackbarPos('im4', 'image') / 100
+        aa = cv2.getTrackbarPos('im5', 'image') / 100
+
+        img = (gen(k*r1 + g*r2 + b*r3 + a*r4 + aa*r5).detach().cpu().numpy()[1,:,:,:] * 255)
+        img = (img).clip(0, 255).astype('uint8')
+        img = np.transpose(img, (1, 2, 0))[:,:,::-1]
+
+
+        # When you print px.shape you should get (300, 512, 3)
+        #print(px.shape)
+        # img = (img * 255).clip(0, 255).astype('uint8')
+
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     import multiprocessing
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(0, 128, save_time=1, save_dir='new38.pth')
+    trainNN(0, 128, save_time=1, save_dir='theBestWeGot.pth')
 
 # print("CUDA Available:", torch.cuda.is_available())
 # trainNN(30, 16, save_time=10, save_dir='checkpoint12.pth')
