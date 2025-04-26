@@ -230,8 +230,9 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', slide=
                 im = ((im + 1)*127.5).clip(0, 255).astype(np.uint8)
                 plt.imsave(f'{folder_path}/epoch{epoch+1}.png', im)
                 print(f"Epoch {epoch+1} - D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
-    gen.eval()
+
     if (not slide):
+        gen.eval()
         for i in range(100):
             r = torch.randn(2, 100).to(device)
             im = gen(r).detach().cpu().numpy()[0]
@@ -269,8 +270,8 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', slide=
             k = cv2.getTrackbarPos('im1', 'image')/100000
             g = cv2.getTrackbarPos('im2', 'image')/100000
             b = cv2.getTrackbarPos('im3', 'image')/100000
-            a = cv2.getTrackbarPos('im4', 'image') / 100000
-            aa = cv2.getTrackbarPos('im5', 'image') / 100000
+            a = cv2.getTrackbarPos('im4', 'image') /100000
+            aa = cv2.getTrackbarPos('im5', 'image') /100000
 
             img = (gen(k*r1 + g*r2 + b*r3 + a*r4 + aa*r5).detach().cpu().numpy()[1,:,:,:])
             img = ((img + 1)*127.5).clip(0, 255).astype('uint8')
@@ -283,4 +284,4 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(0, 128, save_time=1, save_dir='bestGAN.pth', slide=False)
+    trainNN(0, 128, save_time=1, save_dir='bestGAN.pth', slide=0)
