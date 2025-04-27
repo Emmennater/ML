@@ -27,20 +27,17 @@ class FaceDataset(Dataset):
 
 
 class D_Block(nn.Module):
-    def __init__(self, in_channels, out_channels, end=False):
+    def __init__(self, in_channels, out_channels):
         super(D_Block, self).__init__()
 
-        if end:
-            self.model = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.LeakyReLU(0.2, inplace=False),
-                nn.Dropout2d(0.3),
-            )
-        else:
-            self.model = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=True),
-                nn.LeakyReLU(0.2, inplace=False),
-            )
+        self.model = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.LeakyReLU(0.2, inplace=False),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+        )
+
+    def forward(self, x):
+        return self.model(x)
 
 
 class Discriminator(nn.Module):
@@ -54,27 +51,34 @@ class Discriminator(nn.Module):
 
         self.layers = nn.ModuleList(
             [
-                D_Block(512, 512),  # 16x16 -> 8x8
-                D_Block(512, 512),  # 32x32 -> 16x16
-                D_Block(256, 512),  # 64x64 -> 32x32
-                D_Block(128, 256, True),  # 128x128 -> 64x64
+                D_Block(512, 1024),  # 8x8 -> 4x4
+                D_Block(256, 512),  # 16x16 -> 8x8
+                D_Block(128, 256),  # 32x32 -> 16x16
+                D_Block(64, 128),  # 64x64 -> 32x32
+                D_Block(32, 64),  # 128x128 -> 64x64
             ]
         )
 
         self.from_rgbs = nn.ModuleList(
             [
                 nn.Conv2d(3, 512, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(3, 512, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(3, 512, kernel_size=3, stride=1, padding=1, bias=True),
                 nn.Conv2d(3, 256, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(3, 128, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=True),
             ]
         )
 
-        self.map_output = nn.Sequential(nn.Conv2d(512, 1, kernel_size=8, stride=1, padding=0, bias=True))
+        self.map_output = nn.Sequential(nn.Conv2d(1024, 1, kernel_size=4, stride=1, padding=0, bias=True))
+
+    def grow_network(self, num_iters):
+        self.grow_rate = 1 / num_iters
+        self.alpha = self.grow_rate
+        self.depth += 1
 
     def forward(self, x_rgb):
-        if self.training:
-            x_rgb = x_rgb + torch.randn_like(x_rgb) * self.noise_std
+        # if self.training:
+        #     x_rgb = x_rgb + torch.randn_like(x_rgb) * self.noise_std
 
         x = self.from_rgbs[self.depth](x_rgb)
         x = self.layers[self.depth](x)
@@ -87,8 +91,8 @@ class Discriminator(nn.Module):
             self.alpha += self.grow_rate
 
         for i in range(self.depth, 0, -1):
-            if self.training:
-                x = x + torch.randn_like(x) * self.noise_std
+            # if self.training:
+            #     x = x + torch.randn_like(x) * self.noise_std
             x = self.layers[i - 1](x)
 
         x = self.map_output(x)
@@ -98,22 +102,15 @@ class Discriminator(nn.Module):
 
 
 class G_Block(nn.Module):
-    def __init__(self, in_channels, out_channels, start=False):
+    def __init__(self, in_channels, out_channels):
         super(G_Block, self).__init__()
 
-        if start:
-            self.model = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(True),
-            )
-        else:
-            self.model = nn.Sequential(
-                nn.Upsample(scale_factor=2, mode="nearest"),
-                nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(True),
-            )
+        self.model = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode="nearest"),
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(True),
+        )
 
     def forward(self, x):
         return self.model(x)
@@ -128,29 +125,49 @@ class Generator(nn.Module):
         self.upsample = nn.Upsample(scale_factor=2, mode="nearest")
 
         self.map_noise = nn.Sequential(
-            nn.Linear(100, 512 * 8 * 8, bias=False),
-            nn.BatchNorm1d(512 * 8 * 8),
+            nn.Linear(100, 1024 * 4 * 4, bias=False),
+            nn.BatchNorm1d(1024 * 4 * 4),
             nn.ReLU(True),
-            nn.Unflatten(1, (512, 8, 8)),
+            nn.Unflatten(1, (1024, 4, 4)),
         )
 
         self.layers = nn.ModuleList(
             [
-                G_Block(512, 512, True),  # 8x8 -> 16x16
-                G_Block(512, 512),  # 16x16 -> 32x32
-                G_Block(512, 256),  # 32x32 -> 64x64
-                G_Block(256, 128),  # 64x64 -> 128x128
+                G_Block(1024, 512),  # 4x4 -> 8x8
+                G_Block(512, 256),  # 8x8 -> 16x16
+                G_Block(256, 128),  # 16x16 -> 32x32
+                G_Block(128, 64),  # 32x32 -> 64x64
+                G_Block(64, 32),  # 64x64 -> 128x128
             ]
         )
 
         self.to_rgbs = nn.ModuleList(
             [
                 nn.Conv2d(512, 3, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(512, 3, kernel_size=3, stride=1, padding=1, bias=True),
                 nn.Conv2d(256, 3, kernel_size=3, stride=1, padding=1, bias=True),
                 nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1, bias=True),
             ]
         )
+
+    def load_state(self, state):
+        if state is None:
+            return
+
+        self.depth = state["depth"]
+        self.alpha = state["alpha"]
+        self.grow_rate = state["grow_rate"]
+
+    def save_state(self):
+        return {"depth": self.depth, "alpha": self.alpha, "grow_rate": self.grow_rate}
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.normal_(m.weight, mean=0.0, std=0.02)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, mean=0.0, std=0.02)
 
     def grow_network(self, num_iters):
         self.grow_rate = 1 / num_iters
@@ -168,7 +185,7 @@ class Generator(nn.Module):
 
         if self.alpha < 1:
             # Blend with previous layer
-            x_old = self.upsample(out)
+            x_old = self.upsample(x)
             old_rgb = self.to_rgbs[self.depth - 1](x_old)
             x_rgb = self.alpha * x_rgb + (1 - self.alpha) * old_rgb
             self.alpha += self.grow_rate
@@ -189,6 +206,7 @@ def save_checkpoint(gen, dis, gen_opt, dis_opt, epoch, path):
     torch.save(
         {
             "epoch": epoch,
+            "gen_state": gen.save_state(),
             "gen_state_dict": gen.state_dict(),
             "dis_state_dict": dis.state_dict(),
             "gen_optimizer": gen_opt.state_dict(),
@@ -208,21 +226,11 @@ def load_checkpoint(gen, dis, gen_opt, dis_opt, path):
         dis.load_state_dict(checkpoint["dis_state_dict"])
         gen_opt.load_state_dict(checkpoint["gen_optimizer"])
         dis_opt.load_state_dict(checkpoint["dis_optimizer"])
+        gen.load_state(checkpoint["gen_state"])
         print(f"Checkpoint loaded from epoch {checkpoint['epoch']}")
         return checkpoint["epoch"]
     print("Checkpoint not found")
     return 0
-
-
-def init_weights(gen):
-    def init_weights_helper(m):
-        # If the submodule is nn.Conv2d or nn.ConvTranspose2d
-        # set weights to normal distribution with mean=0 and std=0.02
-        if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
-            nn.init.normal_(m.weight, mean=0.0, std=0.02)
-
-    # Apply the function to all submodules of the generator (i.e. all layers)
-    gen.apply(init_weights_helper)
 
 
 def slider_window(gen):
@@ -286,20 +294,36 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir=""):
     gen = Generator().to(device)
     dis = Discriminator().to(device)
     lossfn = nn.BCEWithLogitsLoss()
-
-    init_weights(gen)
+    gen.init_weights()
 
     dis_opt = torch.optim.Adam(dis.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=1e-4)
     gen_opt = torch.optim.Adam(gen.parameters(), lr=lr, betas=(0.5, 0.999))
     start_epoch = load_checkpoint(gen, dis, gen_opt, dis_opt, save_dir)
+
+    # Update image_resize
+    image_resize = 8 * 2**gen.depth
+    epoch_growth_stops = [5, 10, 15, 18, 20]  # 8, 16, 32, 64, 128
+    # epoch_growth_stops = [1, 2, 3, 4, 5]  # 8, 16, 32, 64, 128
+
+    print(f"Image size: {image_resize}x{image_resize}")
 
     if epochs > 0:
         dataset = FaceDataset(img_dir)
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
         for epoch in range(start_epoch, start_epoch + epochs):
+            if gen.depth < len(epoch_growth_stops) and epoch == epoch_growth_stops[gen.depth]:
+                # Grow network
+                num_iters = 1.5 * (len(dataset) // batch_size) * epoch_growth_stops[gen.depth]
+                gen.grow_network(num_iters)
+                dis.grow_network(num_iters)
+                image_resize *= 2
+                print(f"Growing network to {image_resize}x{image_resize}")
+
+            i = 0
             for real in loader:
                 real = real.to(device, non_blocking=True)
+                real = F.interpolate(real, (image_resize, image_resize), mode="nearest")
 
                 # === Discriminator ===
                 noise = torch.randn(batch_size, noise_dim, device=device)
@@ -330,6 +354,10 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir=""):
                 g_loss.backward()
                 gen_opt.step()
 
+                i += 1
+                if i % 10 == 0:
+                    print(f"Batch {i:4} / {len(loader)} - D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}, Alpha: {gen.alpha:.6f}")
+
             if (epoch + 1) % save_time == 0:
                 save_checkpoint(gen, dis, gen_opt, dis_opt, epoch + 1, save_dir)
                 folder_path = save_dir[:-4]
@@ -354,7 +382,7 @@ if __name__ == "__main__":
     global device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    gen = trainNN(0, 128, save_time=1, save_dir="PGAN.pth")
+    gen = trainNN(0, 64, save_time=1, save_dir="PGAN2.pth")
     gen.eval()
 
     # slider_window(gen)
