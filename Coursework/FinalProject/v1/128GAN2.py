@@ -115,9 +115,11 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=True),  # *2
             nn.BatchNorm2d(128),
             nn.ReLU(True),
-
+        )
+        self.model1 = nn.Sequential(
             # Upsample to (64, 64, 64)
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=True),  # *2
+            #nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=True),  # *2
+            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1, bias=True),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
         )
@@ -136,6 +138,8 @@ class Generator(nn.Module):
 
     def forward(self, x):
         x = self.model(x)
+        x = TF.resize(x, (64, 64))
+        x = self.model1(x)
         x = TF.resize(x, (128, 128))# Upsample to (3, 128, 128)
         return self.model2(x)
 
@@ -253,4 +257,4 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(100000, 128, save_time=1, save_dir='bestGANTest2.pth')
+    trainNN(100000, 128, save_time=1, save_dir='bestGAN3.pth')
