@@ -381,7 +381,7 @@ if __name__ == "__main__":
     global device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    gen = trainNN(0, 64, save_time=1, save_dir="PGAN1.pth")
+    gen = trainNN(150, 64, save_time=1, save_dir="PGAN2.pth")
     gen.eval()
 
     # slider_window(gen)
