@@ -178,7 +178,7 @@ def load_checkpoint(gen, dis, gen_opt, dis_opt, path):
     return 0
 
 
-def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', device='cuda' if torch.cuda.is_available() else 'cpu'):
+def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', slide=False, device='cuda' if torch.cuda.is_available() else 'cpu'):
     gen = Generator().to(device)
     def init_weights(m):
         if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
@@ -244,11 +244,54 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', device
                 plt.imsave(f'{folder_path}/epoch{epoch+1}.png', im)
                 print(f"Epoch {epoch+1} - D Loss: {d_loss.item():.4f}, G Loss: {g_loss.item():.4f}")
 
-    gen.eval()
-    for i in range(100):
-        r = torch.randn(2, 100).to(device)
-        im = gen(r).detach().cpu().numpy()[0]
-        show(im)
+    if (not slide):
+        gen.eval()
+        for i in range(100):
+            r = torch.randn(2, 100).to(device)
+            im = gen(r).detach().cpu().numpy()[0]
+            show(im)
+    else:
+        def nothing(x):
+            pass
+
+        cv2.namedWindow('image')
+        # create trackbars for color change
+        cv2.createTrackbar('im1', 'image', 0, 100, nothing)
+        cv2.createTrackbar('im2', 'image', 0, 100, nothing)
+        cv2.createTrackbar('im3', 'image', 0, 100, nothing)
+        cv2.createTrackbar('im4', 'image', 0, 100, nothing)
+        cv2.createTrackbar('im5', 'image', 0, 100, nothing)
+
+        # create switch for ON/OFF functionality
+        r1 = ((torch.randn(2, 100))).to(device)
+        r2 = ((torch.randn(2, 100))).to(device)
+        r3 = ((torch.randn(2, 100))).to(device)
+        r4 = ((torch.randn(2, 100))).to(device)
+        r5 = ((torch.randn(2, 100))).to(device)
+
+        img = np.zeros((128, 128, 3), np.uint8)
+        # img = (gen(r + r2 + r3).detach().cpu().numpy()[0] * 255)
+        # img = (img * 255).clip(0, 255).astype('uint8')
+        while (True):
+            big_img = cv2.resize(img, (128 * 4, 128 * 4), interpolation=cv2.INTER_NEAREST)
+            cv2.imshow('image', big_img)
+            # cv2.imshow('image', img)
+            k = cv2.waitKey(1) & 0xFF
+            if k == 27:  # Escape
+                break
+
+            # get current positions of four trackbars
+            k = cv2.getTrackbarPos('im1', 'image') / 100000
+            g = cv2.getTrackbarPos('im2', 'image') / 100000
+            b = cv2.getTrackbarPos('im3', 'image') / 100000
+            a = cv2.getTrackbarPos('im4', 'image') / 100000
+            aa = cv2.getTrackbarPos('im5', 'image') / 100000
+
+            img = (gen(k * r1 + g * r2 + b * r3 + a * r4 + aa * r5).detach().cpu().numpy()[1, :, :, :])
+            img = ((img + 1) * 127.5).clip(0, 255).astype('uint8')
+            img = np.transpose(img, (1, 2, 0))[:, :, ::-1]
+
+        cv2.destroyAllWindows()
 
 
 
@@ -257,4 +300,4 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(100000, 128, save_time=1, save_dir='bestGAN3.pth')
+    trainNN(0, 128, save_time=1, save_dir='bestGAN3.pth', slide=1)
