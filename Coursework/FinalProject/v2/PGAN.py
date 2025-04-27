@@ -8,7 +8,6 @@ from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import functional as TF
 import cv2
-import helper
 
 
 img_dir = "./Flickr.npy"
