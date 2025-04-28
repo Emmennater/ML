@@ -48,27 +48,54 @@ class Discriminator(nn.Module):
         self.grow_rate = 0
         self.downsample = nn.AvgPool2d(kernel_size=2, stride=2)
 
-        self.layers = nn.ModuleList(
-            [
-                D_Block(512, 1024),  # 8x8 -> 4x4
-                D_Block(256, 512),  # 16x16 -> 8x8
-                D_Block(128, 256),  # 32x32 -> 16x16
-                D_Block(64, 128),  # 64x64 -> 32x32
-                D_Block(32, 64),  # 128x128 -> 64x64
-            ]
-        )
-
         self.from_rgbs = nn.ModuleList(
             [
-                nn.Conv2d(3, 512, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(3, 256, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(3, 128, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Sequential( # 8x8 -> 4x4
+                    nn.Conv2d(3, 1024, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False)
+                ),
+                nn.Sequential( # 16x16 -> 8x8
+                    nn.Conv2d(3, 512, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False)
+                ),
+                nn.Sequential( # 32x32 -> 16x16
+                    nn.Conv2d(3, 256, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False)
+                ),
+                nn.Sequential( # 64x64 -> 32x32
+                    nn.Conv2d(3, 128, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False)
+                ),
+                nn.Sequential( # 128x128 -> 64x64
+                    nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False)
+                ),
             ]
         )
 
-        self.map_output = nn.Sequential(nn.Conv2d(1024, 1, kernel_size=4, stride=1, padding=0, bias=True))
+        self.layers = nn.ModuleList(
+            [
+                nn.Identity(), # 4x4 -> 4x4
+                nn.Sequential( # 8x8 -> 4x4
+                    nn.Conv2d(512, 1024, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False),
+                ),
+                nn.Sequential( # 16x16 -> 8x8
+                    nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False),
+                ),
+                nn.Sequential( # 32x32 -> 16x16
+                    nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False),
+                ),
+                nn.Sequential( # 64x64 -> 32x32
+                    nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.2, inplace=False),
+                ),
+            ]
+        )
+
+        self.map_output = nn.Sequential(nn.Conv2d(1024, 1, kernel_size=4, padding=0))
 
     def grow_network(self, num_iters):
         self.grow_rate = 1 / num_iters
@@ -76,8 +103,8 @@ class Discriminator(nn.Module):
         self.depth += 1
 
     def forward(self, x_rgb):
-        # if self.training:
-        #     x_rgb = x_rgb + torch.randn_like(x_rgb) * self.noise_std
+        if self.training:
+            x_rgb = x_rgb + torch.randn_like(x_rgb) * self.noise_std
 
         x = self.from_rgbs[self.depth](x_rgb)
         x = self.layers[self.depth](x)
@@ -90,8 +117,8 @@ class Discriminator(nn.Module):
             self.alpha += self.grow_rate
 
         for i in range(self.depth, 0, -1):
-            # if self.training:
-            #     x = x + torch.randn_like(x) * self.noise_std
+            if self.training:
+                x = x + torch.randn_like(x) * self.noise_std
             x = self.layers[i - 1](x)
 
         x = self.map_output(x)
@@ -132,21 +159,37 @@ class Generator(nn.Module):
 
         self.layers = nn.ModuleList(
             [
-                G_Block(1024, 512),  # 4x4 -> 8x8
-                G_Block(512, 256),  # 8x8 -> 16x16
-                G_Block(256, 128),  # 16x16 -> 32x32
-                G_Block(128, 64),  # 32x32 -> 64x64
-                G_Block(64, 32),  # 64x64 -> 128x128
+                nn.Identity(), # 4x4 -> 4x4
+                nn.Sequential( # 4x4 -> 8x8
+                    nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, padding=1, bias=True),
+                    nn.BatchNorm2d(512),
+                    nn.ReLU(True),
+                ),
+                nn.Sequential( # 8x8 -> 16x16
+                    nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=True),
+                    nn.BatchNorm2d(256),
+                    nn.ReLU(True),
+                ),
+                nn.Sequential( # 16x16 -> 32x32
+                    nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=True),
+                    nn.BatchNorm2d(128),
+                    nn.ReLU(True),
+                ),
+                nn.Sequential( # 32x32 -> 64x64
+                    nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=True),
+                    nn.BatchNorm2d(64),
+                    nn.ReLU(True),
+                )
             ]
         )
 
         self.to_rgbs = nn.ModuleList(
             [
-                nn.Conv2d(512, 3, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(256, 3, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=True),
-                nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.ConvTranspose2d(1024, 3, kernel_size=4, stride=2, padding=1, bias=True),
+                nn.ConvTranspose2d(512, 3, kernel_size=4, stride=2, padding=1, bias=True),
+                nn.ConvTranspose2d(256, 3, kernel_size=4, stride=2, padding=1, bias=True),
+                nn.ConvTranspose2d(128, 3, kernel_size=4, stride=2, padding=1, bias=True),
+                nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1, bias=True),
             ]
         )
 
@@ -301,8 +344,10 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir=""):
 
     # Update image_resize
     image_resize = 8 * 2**gen.depth
-    epoch_growth_stops = [5, 10, 15, 18, 20]  # 8, 16, 32, 64, 128
+    epoch_growth_stops = [50, 80, 95, 105, 110]  # 8, 16, 32, 64, 128
+    # epoch_growth_stops = [20, 30, 40, 45, 50]  # 8, 16, 32, 64, 128
     # epoch_growth_stops = [1, 2, 3, 4, 5]  # 8, 16, 32, 64, 128
+    final_size = 128
 
     print(f"Image size: {image_resize}x{image_resize}")
 
@@ -311,7 +356,7 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir=""):
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
         for epoch in range(start_epoch, start_epoch + epochs):
-            if gen.depth < len(epoch_growth_stops) and epoch == epoch_growth_stops[gen.depth]:
+            if gen.depth < len(epoch_growth_stops) and epoch_growth_stops[gen.depth] and epoch == epoch_growth_stops[gen.depth]:
                 # Grow network
                 num_iters = 1.5 * (len(dataset) // batch_size) * epoch_growth_stops[gen.depth]
                 gen.grow_network(num_iters)
@@ -381,7 +426,7 @@ if __name__ == "__main__":
     global device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    gen = trainNN(150, 64, save_time=1, save_dir="PGAN2.pth")
+    gen = trainNN(120, 128, save_time=1, save_dir="PGAN1.pth")
     gen.eval()
 
     # slider_window(gen)
