@@ -232,6 +232,7 @@ class Generator(nn.Module):
 
         out = self.layers[self.depth](x)
         x_rgb = self.to_rgbs[self.depth](out)
+        avg = 0
 
         if self.alpha < 1:
             # Blend with previous layer
@@ -239,10 +240,10 @@ class Generator(nn.Module):
             sz = int(x.shape[-1] * 2)
             x_old = TF.resize(x, (sz, sz))
             old_rgb = self.to_rgbs[self.depth - 1](x_old)
-            x_rgb = self.alpha * x_rgb + (1 - self.alpha) * old_rgb
+            avg = self.alpha * F.tanh(x_rgb) + (1 - self.alpha) * F.tanh(old_rgb)
             self.alpha += self.grow_rate
 
-        return F.tanh(x_rgb)
+        return avg
 
 
 def show(img):
@@ -354,9 +355,10 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir=""):
 
     # Update image_resize
     image_resize = 8 * 2**gen.depth
-    epoch_growth_stops = [50, 80, 95, 105, 110]  # 8, 16, 32, 64, 128
+    # epoch_growth_stops = [50, 100, 120, 140, 160]  # 8, 16, 32, 64, 128
+    # epoch_growth_stops = [50, 80, 95, 105, 110]  # 8, 16, 32, 64, 128
     # epoch_growth_stops = [20, 30, 40, 45, 50]  # 8, 16, 32, 64, 128
-    # epoch_growth_stops = [1, 2, 3, 4, 5]  # 8, 16, 32, 64, 128
+    epoch_growth_stops = [5, 10, 15, 20, 25]  # 8, 16, 32, 64, 128
     final_size = 128
 
     print(f"Image size: {image_resize}x{image_resize}")
@@ -436,7 +438,7 @@ if __name__ == "__main__":
     global device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    gen = trainNN(160, 128, save_time=1, save_dir="PGAN6.pth")
+    gen = trainNN(160, 128, save_time=1, save_dir="PGAN13.pth")
     gen.eval()
 
     # slider_window(gen)
