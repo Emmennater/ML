@@ -136,9 +136,13 @@ class G_Block(nn.Module):
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(True),
+            # nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True),
+            # nn.ReLU(True),
         )
 
     def forward(self, x):
+        # sz = int(x.shape[-1] * 2)
+        # x = TF.resize(x, (sz, sz))
         return self.model(x)
 
 
@@ -148,7 +152,7 @@ class Generator(nn.Module):
         self.depth = 0
         self.alpha = 1
         self.grow_rate = 0
-        self.upsample = nn.Upsample(scale_factor=2, mode="nearest")
+        # self.upsample = nn.Upsample(scale_factor=2, mode="nearest")
 
         self.map_noise = nn.Sequential(
             nn.Linear(100, 1024 * 4 * 4, bias=False),
@@ -159,37 +163,41 @@ class Generator(nn.Module):
 
         self.layers = nn.ModuleList(
             [
-                nn.Identity(), # 4x4 -> 4x4
-                nn.Sequential( # 4x4 -> 8x8
-                    nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, padding=1, bias=True),
-                    nn.BatchNorm2d(512),
-                    nn.ReLU(True),
-                ),
-                nn.Sequential( # 8x8 -> 16x16
-                    nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=True),
-                    nn.BatchNorm2d(256),
-                    nn.ReLU(True),
-                ),
-                nn.Sequential( # 16x16 -> 32x32
-                    nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=True),
-                    nn.BatchNorm2d(128),
-                    nn.ReLU(True),
-                ),
-                nn.Sequential( # 32x32 -> 64x64
-                    nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=True),
-                    nn.BatchNorm2d(64),
-                    nn.ReLU(True),
-                )
+                G_Block(1024, 512),
+                G_Block(512, 256),
+                G_Block(256, 128),
+                G_Block(128, 64),
+                G_Block(64, 32),
+                # nn.Sequential( # 4x4 -> 8x8
+                #     nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, padding=1, bias=True),
+                #     nn.BatchNorm2d(512),
+                #     nn.ReLU(True),
+                # ),
+                # nn.Sequential( # 8x8 -> 16x16
+                #     nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1, bias=True),
+                #     nn.BatchNorm2d(256),
+                #     nn.ReLU(True),
+                # ),
+                # nn.Sequential( # 16x16 -> 32x32
+                #     nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1, bias=True),
+                #     nn.BatchNorm2d(128),
+                #     nn.ReLU(True),
+                # ),
+                # nn.Sequential( # 32x32 -> 64x64
+                #     nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=True),
+                #     nn.BatchNorm2d(64),
+                #     nn.ReLU(True),
+                # )
             ]
         )
 
         self.to_rgbs = nn.ModuleList(
             [
-                nn.ConvTranspose2d(1024, 3, kernel_size=4, stride=2, padding=1, bias=True),
-                nn.ConvTranspose2d(512, 3, kernel_size=4, stride=2, padding=1, bias=True),
-                nn.ConvTranspose2d(256, 3, kernel_size=4, stride=2, padding=1, bias=True),
-                nn.ConvTranspose2d(128, 3, kernel_size=4, stride=2, padding=1, bias=True),
-                nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1, bias=True),
+                nn.Conv2d(512, 3, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(256, 3, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(128, 3, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=True),
+                nn.Conv2d(32, 3, kernel_size=3, stride=1, padding=1, bias=True),
             ]
         )
 
@@ -227,7 +235,9 @@ class Generator(nn.Module):
 
         if self.alpha < 1:
             # Blend with previous layer
-            x_old = self.upsample(x)
+            # x_old = self.upsample(x)
+            sz = int(x.shape[-1] * 2)
+            x_old = TF.resize(x, (sz, sz))
             old_rgb = self.to_rgbs[self.depth - 1](x_old)
             x_rgb = self.alpha * x_rgb + (1 - self.alpha) * old_rgb
             self.alpha += self.grow_rate
@@ -426,7 +436,7 @@ if __name__ == "__main__":
     global device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    gen = trainNN(120, 128, save_time=1, save_dir="PGAN1.pth")
+    gen = trainNN(160, 128, save_time=1, save_dir="PGAN6.pth")
     gen.eval()
 
     # slider_window(gen)
