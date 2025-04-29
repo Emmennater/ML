@@ -103,8 +103,8 @@ class Discriminator(nn.Module):
         self.depth += 1
 
     def forward(self, x_rgb):
-        # if self.training:
-        #     x_rgb = x_rgb + torch.randn_like(x_rgb) * self.noise_std
+        if self.training:
+            x_rgb = x_rgb + torch.randn_like(x_rgb) * self.noise_std
 
         x = self.from_rgbs[self.depth](x_rgb)
         x = self.layers[self.depth](x)
@@ -117,8 +117,8 @@ class Discriminator(nn.Module):
             self.alpha += self.grow_rate
 
         for i in range(self.depth, 0, -1):
-            # if self.training:
-            #     x = x + torch.randn_like(x) * self.noise_std
+            if self.training:
+                x = x + torch.randn_like(x) * self.noise_std
             x = self.layers[i - 1](x)
 
         x = self.map_output(x)
@@ -379,14 +379,6 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir=""):
                 real = real.to(device, non_blocking=True)
                 real = F.interpolate(real, (image_resize, image_resize), mode="nearest")
 
-                # Display training images
-                # im = real.detach().cpu().numpy()[0]
-                # im = np.transpose(im, (1, 2, 0))[:, :, ::-1]
-                # im = ((im + 1) * 127.5).clip(0, 255).astype(np.uint8)
-                # im = cv2.resize(im, (300, 300), interpolation=cv2.INTER_NEAREST)
-                # cv2.imshow("image", im)
-                # cv2.waitKey(0)
-
                 # === Discriminator ===
                 noise = torch.randn(batch_size, noise_dim, device=device)
                 fake = gen(noise).detach()
@@ -444,7 +436,7 @@ if __name__ == "__main__":
     global device
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    gen = trainNN(120, 128, save_time=1, save_dir="PGAN6.pth")
+    gen = trainNN(160, 128, save_time=1, save_dir="PGAN6.pth")
     gen.eval()
 
     # slider_window(gen)
