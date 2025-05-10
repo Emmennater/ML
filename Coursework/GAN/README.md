@@ -31,6 +31,4 @@ higher quality images with less artifacts. This code has a slider that allows yo
     <td><img src="Images/slider0.gif" width="270px"/></td>
     <td><img src="Images/slider1.gif" width="270px"/></td>
   </tr>
-  <tr>
-  </tr>
 </table>
