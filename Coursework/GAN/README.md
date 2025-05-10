@@ -12,6 +12,14 @@ Most are not great, but we've seen a lot of improvement with the later models. C
 Our latest version generates 128x128 images with three color channels. The model was trained on the
 [Flickr Dataset](https://github.com/NVlabs/ffhq-dataset). This contained
 higher quality images with less artifacts. This code has a slider that allows you to transition between two different random vectors shown [here](#sliders).
+Using the `trainNN` function, you can run the model yourself and view the generated images.
+Here is how you use the `trainNN` function:
+- `epochs` - Set to 0 to run the model without training. Every epoch represents one pass through the dataset of 70,000 images.
+- `batch_size` - The number of images we train the model on at a time. We found that 128 works best.
+- `lr` - How much the model parameters are adjusted after each iteration. Lr = 0.0002 works well for Adam Optimizer.
+- `save_time` - The number of epochs before each save.
+- `save_dir` - The file where the model is saved and loaded from.
+- `slide` - Set true to use sliders and false to generate images.
 
 ### Generated Images
 <table>
