@@ -10,7 +10,7 @@ Generates images from an input noise vector. Tries to generate images that look 
 Most are not great, but we've seen a lot of improvement with the later models. Check out some of these images we were able to generate!
 ## Latest Version
 Our latest version generates 128x128 images with three color channels. The model was trained on the
-[Flickr Dataset](https://drive.google.com/drive/folders/1u2xu7bSrWxrbUxk-dT-UvEJq8IjdmNTP). This contained
+[Flickr Dataset](https://github.com/NVlabs/ffhq-dataset). This contained
 higher quality images with less artifacts. This code has a slider that allows you to transition between two different random vectors shown [here](#sliders).
 
 ### Generated Images
@@ -28,8 +28,9 @@ higher quality images with less artifacts. This code has a slider that allows yo
 ### Sliders <a id="sliders"></a>
 <table>
   <tr>
-    <td><img src="Images/slider0.gif" width="100%"/></td>
-    <td><img src="Images/slider1.gif" width="100%"/></td>
+    <td><img src="Images/slider0.gif" width="270px"/></td>
+    <td><img src="Images/slider1.gif" width="270px"/></td>
   </tr>
   <tr>
+  </tr>
 </table>
