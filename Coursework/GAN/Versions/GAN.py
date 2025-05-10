@@ -267,9 +267,5 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', slide=
 
         cv2.destroyAllWindows()
 
-
-
-
-
 print("CUDA Available:", torch.cuda.is_available())
-trainNN(0, 128, save_time=1, save_dir='bestGAN3.pth', slide=0)
+trainNN(0, 128, save_time=1, save_dir='gan_model.pth', slide=0)
