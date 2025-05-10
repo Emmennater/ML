@@ -1,10 +1,8 @@
 import os
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from torch import nn
-from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import functional as TF
 import cv2
@@ -23,18 +21,6 @@ class FaceDataset(Dataset):
         img = self.data[idx].astype(np.float32) / 127.5 - 1.0
         return torch.from_numpy(img)
 
-# class FaceDataset(Dataset):
-#     def __init__(self, npy_file):
-#         self.npy_file = npy_file
-#         self.length = np.load(npy_file, mmap_mode='r').shape[0]
-#
-#     def __len__(self):
-#         return self.length
-#
-#     def __getitem__(self, idx):
-#         data = np.load(self.npy_file, mmap_mode='r')
-#         img = data[idx].astype(np.float32) / 127.5 - 1.0
-#         return torch.from_numpy(img)
 
 class Discriminator(nn.Module):
     def __init__(self):
@@ -118,7 +104,6 @@ class Generator(nn.Module):
         )
         self.model1 = nn.Sequential(
             # Upsample to (64, 64, 64)
-            #nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1, bias=True),  # *2
             nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1, bias=True),
             nn.BatchNorm2d(64),
             nn.ReLU(True),
@@ -130,11 +115,6 @@ class Generator(nn.Module):
             nn.Conv2d(64, 3, kernel_size=3, stride=1, padding=1, bias=True),
             nn.Tanh()
         )
-        #     # Upsample to (3, 128, 128)
-        #     nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1, bias=True),  # *2
-        #
-        #     nn.Tanh()  # Output in range [-1, 1]
-        # )
 
     def forward(self, x):
         x = self.model(x)
@@ -197,11 +177,8 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', slide=
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
         for epoch in range(start_epoch, start_epoch + epochs):
-            #i = 0
             for real in loader:
                 real = real.to(device, non_blocking=True)
-                # print(i)
-                # i += 1
                 # === Discriminator ===
                 noise = torch.randn(batch_size, noise_dim, device=device)
                 fake = gen(noise).detach()
@@ -270,12 +247,9 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', slide=
         r5 = ((torch.randn(2, 100))).to(device)
 
         img = np.zeros((128, 128, 3), np.uint8)
-        # img = (gen(r + r2 + r3).detach().cpu().numpy()[0] * 255)
-        # img = (img * 255).clip(0, 255).astype('uint8')
         while (True):
             big_img = cv2.resize(img, (128 * 4, 128 * 4), interpolation=cv2.INTER_NEAREST)
             cv2.imshow('image', big_img)
-            # cv2.imshow('image', img)
             k = cv2.waitKey(1) & 0xFF
             if k == 27:  # Escape
                 break
@@ -295,9 +269,7 @@ def trainNN(epochs=0, batch_size=16, lr=0.0002, save_time=1, save_dir='', slide=
 
 
 
-if __name__ == '__main__':
-    import multiprocessing
-    multiprocessing.freeze_support()  # Optional but recommended on Windows
 
-    print("CUDA Available:", torch.cuda.is_available())
-    trainNN(0, 128, save_time=1, save_dir='bestGAN3.pth', slide=0)
+
+print("CUDA Available:", torch.cuda.is_available())
+trainNN(0, 128, save_time=1, save_dir='bestGAN3.pth', slide=0)
