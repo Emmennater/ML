@@ -300,4 +300,4 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()  # Optional but recommended on Windows
 
     print("CUDA Available:", torch.cuda.is_available())
-    trainNN(0, 128, save_time=1, save_dir='bestGAN3.pth', slide=0)
+    trainNN(0, 128, save_time=1, save_dir='bestGAN3.pth', slide=1)
