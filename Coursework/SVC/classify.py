@@ -14,7 +14,7 @@ MinorAxisLength - Length of the shortest axis in pixels
      ConvexArea - The area in pixels of the smallest convex shape that encapsulates the raisin
          Extent - Ranges from 0 to 1; Ratio of Area to Bounding Box
       Perimeter - In pixels
-          Class - Type of raisin
+          Class - Type of raisin (Kecimen/Besni)
 """
 
 # https://www.kaggle.com/datasets/nimapourmoradi/raisin-binary-classification

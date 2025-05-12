@@ -4,13 +4,17 @@
 - Trained on 2121 images of hot dogs and other random food (not hotdogs).
 - Has very good train score but very bad test score (overfitting).
   - Need a bigger dataset.
+- Inspired by Silicon Valley "Hot Dog" and… "Not Hot Dog".
+## Dataset
+- Contains 2121 images of hotdogs and other food each (4242 total).
+- The images were not all the same size so I cropped them to have a 1:1 aspect ratio, 128x128 pixels.
 ## Model
 - Uses convolution layers followed by leaky relu, dropout and maxpool.
 - Dropout is only applied after the first convolutional layer.
 - Maxpool is only applied after the second convolutional layer.
 - Ends with a single linear layer to output a single number between 0 and 1 using the sigmoid activation function.
 - Loss function is Binary Cross-Entropy Loss (BCELoss).
-### Paramters
+### Parameters
 - `cp` is the checkpoint file (where the model is saved and loaded from).
 - `epochs` the number of times the model trains on the entire dataset during training.
   - Set to 0 to skip training and just view the results.
