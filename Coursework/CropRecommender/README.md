@@ -5,7 +5,7 @@
 - A decision tree classifier was used to predict the best plant.
 - Grid search was in charge of finding the best `depth` and `class_weight` (balanced or none). Balanced class weight means if there are less of that label they will have a higher weight in the predictions.
 - The results are very different after each time the program is executed (train test split shuffling).
-## Data fields
+## Data Fields
 - `N` - percent of Nitrogen content in soil
 - `P` - percent of Phosphorous content in soil
 - `K` - percent of Potassium content in soil
@@ -13,8 +13,13 @@
 - `humidity` - relative humidity in %
 - `ph` - ph value of the soil
 - `rainfall` - rainfall in mm
-## Decision Tree Diagram
+## Results
 - Train Score is 1.000
-- Test Score is 0.972
+- Test Score is 0.972 (suprisingly good for 15 depth)
 - Max depth was 15 (possible overfitting)
+## Future Ideas
+- A larger dataset might help the model discover broader patterns.
+- I tried lowering the max depth manually to 10 and it still did very well.
+  - ~0.95 accuracy on train and test.
+## Decision Tree Diagram
 <img src="DescisionTree.png">

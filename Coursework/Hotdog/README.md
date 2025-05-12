@@ -2,8 +2,6 @@
 - Click [here](https://www.kaggle.com/datasets/thedatasith/hotdog-nothotdog/data?select=hotdog-nothotdog) for the dataset.
 - Classifies images hotdog or not hotdog using a convolutional neural network (CNN).
 - Trained on 2121 images of hot dogs and other random food (not hotdogs).
-- Has very good train score but very bad test score (overfitting).
-  - Need a bigger dataset.
 - Inspired by Silicon Valley "Hot Dog" and… "Not Hot Dog".
 ## Dataset
 - Contains 2121 images of hotdogs and other food each (4242 total).
@@ -21,6 +19,10 @@
 - `batch_size` is how many images the model is trained on at a time.
 - `lr` is how much the parameters of the model are adjusted after every batch.
 - `save_every` is the number of epochs before the model is saved.
+## Results
+- Has very good train score (0.95) but very bad test score (0.6) (overfitting).
+  - Need a bigger dataset.
+  - Reduce size of model.
 <table>
   <tr>
     <td><img src="hotdog.png" width="100%"/></td>

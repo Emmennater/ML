@@ -8,6 +8,9 @@ Images are converted to (Nx3) vectors representing RGB color channels. Output im
 4) Fit KMeans to the pixel data.
 5) Predict the cluster for each label using KMeans and assign the new color.
 5) Create a new image with the new colors.
+## Results
+- Images were suprisingly good for reducing to only 32 colors but it still has visible artifacts.
+  - Artifacts can be reduced with dithering and gamma correction.
 ## Future ideas
 - Dithering (improved quality)
 - Try HSB instead of RGB.
